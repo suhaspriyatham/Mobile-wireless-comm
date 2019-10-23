@@ -47,7 +47,7 @@ end
 
 % symbols arranging according to gray mapping
 binarySequence = 0:n-1;
-[graySequence, x] =  bin2gray(binarySequence','psk',n);
+[graySequence, x] =  bin2gray(binarySequence','psk',n)
 gray2bin = containers.Map(graySequence, binarySequence);
 for j=1:n
     PSKsymbolsGray(j) = PSKsymbolsBinary(graySequence(j)+1);
@@ -58,27 +58,30 @@ end
 % QcompSymbol = 1i*imag(PSKsymbolsGray);
 
 % Convert Burst bits into symbols
-bitsPerSymbol = log(n)/log(2);
-for j=1:length(burst)/bitsPerSymbol
-    dec = 0;
-    for k=0:bitsPerSymbol-1          %binary to decimal conversion
-        dec = dec*2^(k)+burst((j-1)*bitsPerSymbol+k+1);
+for j=1:length(burst)/n
+    for k=0:n-1          %binary to decimal conversion
+        dec = dec*2^(k)+burst(j*n+k);
     end
     burstSymbols(j) = dec;
 end
 
 % perform nPSK modulation
 for j = 1:length(burstSymbols)
-    modulatedSignal(j) = PSKsymbolsGray(burstSymbols(j)+1);
+    modulatedSignal(j) = P
+
+
+
 end
+
+% modulatedSignal = Icomp + Qcomp;  need to be modified
+
 
 
 % up sampling
 upSampler = 16;
 upSamplingMatrix = [1 zeros(1,upSampler-1)];
 
-upSampledSignal = kron(modulatedSignal, upSamplingMatrix)
-
+upSampledSignal = kron(modulatedSignal, upSamplingMatrix);
 
 
 
