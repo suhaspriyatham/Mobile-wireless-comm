@@ -76,10 +76,42 @@ end
 % up sampling
 upSampler = 16;
 upSamplingMatrix = [1 zeros(1,upSampler-1)];
+upSampledSignal = kron(modulatedSignal, upSamplingMatrix);
+%debug
+x=upSampledSignal;
+figure
+plot(1:length(x),real(x));
+hold on;
+plot(1:length(x),imag(x));
+%
 
-upSampledSignal = kron(modulatedSignal, upSamplingMatrix)
+% raised cosine filter and interpolation
+[NUM DEN] = rcosine(1, 16, 'normal', 0.35);
+interpolatedSignal = conv(NUM, upSampledSignal);
+% resizing the interpolatedSignal. remove extra bits 
+interpolatedSignal = interpolatedSignal(.5*(length(NUM)-1)+1:length(interpolatedSignal)-.5*(length(NUM)-1));
+
+%debug
+length(interpolatedSignal)
+x=interpolatedSignal;
+figure
+plot(1:length(x),real(x));
+hold on;
+plot(1:length(x),imag(x));
+%
+figure;
+histogram(real(x));
+figure;
+histogram(imag(x));
+figure;
+histogram(abs(real(x)));
+%
+
+
+%Channel Design
 
 
 
+%channel g_t
 
 
