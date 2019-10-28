@@ -30,13 +30,21 @@ function g_t = rician_channel(channelLength)
         gQ_t(i) = sum(2*sin(beta_n).*cos((omega_n)*t(i)))+sqrt(2)*cos(omega_d*t(i))*sin(alpha);
     end
 
-
+% Jakes' Model from other source
+%     for i=1:length(t)
+%         gI_t(i) = sqrt(2)*cos(2*pi*fd*t(i))*2*sum(cos(2*pi*n/M).*cos(omega_d*cos(2*pi*n/(4*M+2))*t(i)));
+%         gQ_t(i) = 2*sum(sin(2*pi*n/M).*cos(2*pi*fd*cos(2*pi*n/(4*M+2))*t(i)));
+%     end   
     %Rayleigh distribution
-%      gI_t = gI_t/sqrt(2*(M+1));
-%      gQ_t = gQ_t/sqrt(2*(M));
-    gI_t = gI_t/sqrt(2*sum(gI_t.^2));
-    gQ_t = gQ_t/sqrt(2*sum(gQ_t.^2));
-
+     gI_t = gI_t/sqrt(2*(M+1));
+     gQ_t = gQ_t/sqrt(2*(M));
+%     gI_t = gI_t/sqrt(2*sum(gI_t.^2));
+%     gQ_t = gQ_t/sqrt(2*sum(gQ_t.^2));
+    figure;
+    histogram(gI_t);
+    figure;
+    histogram(gQ_t);
+    
     g_t_Rayleigh = (gI_t+1i*gQ_t)*sqrt(length(l)); %%sqrt?
 
     
@@ -49,8 +57,15 @@ function g_t = rician_channel(channelLength)
     g_t_Rician = (1+g_t_Rayleigh*A)*gain;
 
     g_t = g_t_Rician/sqrt(sum(abs(g_t_Rician).^2))*sqrt(length(l)); %%% trash
+    
+    figure;
+    plot(l,abs(g_t));
+    title("amplitude");
+    figure;
+    plot(l,phase(g_t));
+    title("phase");
 
-%end
+end
 
 
 
