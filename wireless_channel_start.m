@@ -31,13 +31,13 @@ nUniquewordBits = 96;
 nGuardBits = 0;
 
 infoBits = randi(0:1, 1, nInfoBits);
-uniqueWord = kron([ones(1,12)], [0 0 0 1 1 1 1 0]);%randi(0:1, 1, nUniquewordBits);
+uniqueWord = kron([ones(1,12)], [0 1 0 1 0 1 1 0]);%randi(0:1, 1, nUniquewordBits);
 guardBits = randi(0:1, nGuardBits);
 
 
-%Burst Builder
-%burst=[guardBits uniqueWord infoBits guardBits];
-burst= uniqueWord;
+%Burst builder
+burst=[guardBits uniqueWord infoBits guardBits];
+%burst= uniqueWord;
 
 % Modulation
 n = 4;      % n-PSK modulation
@@ -81,100 +81,76 @@ end
 % up sampling
 upSampler = 16;
 upSamplingMatrix = [1 zeros(1,upSampler-1)];
-upSampledSignal = kron(modulatedSignal, upSamplingMatrix);
-%debug
-% x=upSampledSignal;
-% figure
-% plot(1:length(x),real(x));
-% hold on;
-% plot(1:length(x),imag(x));
-%
+upSampledSignal = interpn(modulatedSignal,4);%kron(modulatedSignal, upSamplingMatrix);
+
 
 % raised cosine filter and interpolation
-[NUM DEN] = rcosine(1, 16, 'normal', 0.35);
+[NUM DEN] = rcosine(1, 16, 'sqrt', 0.35);
 interpolatedSignal = conv(NUM, upSampledSignal);
 % resizing the interpolatedSignal. remove extra bits 
 interpolatedSignal = interpolatedSignal(.5*(length(NUM)-1)+1:length(interpolatedSignal)-.5*(length(NUM)-1));
-
+%interpolatedSignal = interpn(modulatedSignal,4);%modulatedSignal;%interpolatedSignal(.5*(length(NUM)-1)+1:length(interpolatedSignal)-.5*(length(NUM)-1));
 s = interpolatedSignal;
-%debug
-% length(interpolatedSignal)
-% x=interpolatedSignal;
-% figure
-% plot(1:length(x),real(x));
-% hold on;
-% plot(1:length(x),imag(x));
-%
-% figure;
-% histogram(real(x));
-% figure;
-% histogram(imag(x));
-% figure;
-% histogram(abs(real(x)));
-%
 
 
 %channel g_t 
-g_t=rician_channel();
+g_t=rician_channel(length(s));
+%g_t=test(length(s));
 %noise
-noise = 0;%randn(1,length(interpolatedSignal));
+noise = randn(1,length(interpolatedSignal))+1i*randn(1,length(interpolatedSignal));
 
-receivedSignal = conv(g_t,interpolatedSignal);
+%receivedSignal = conv(g_t,interpolatedSignal);
+receivedSignal = g_t.*interpolatedSignal+noise*5;
 % resizing the receivedSignal. remove extra bits and adding noise
-receivedSignal = receivedSignal(.5*(length(g_t)-1)+1:length(receivedSignal)-.5*(length(g_t)-1));
+%receivedSignal = receivedSignal(.5*(length(g_t)-1)+1:length(receivedSignal)-.5*(length(g_t)-1));
 receivedSignal = receivedSignal+noise;
 
 y=receivedSignal;
 % Down sampling by 16;
- y=decimate(y,16);
-% s=decimate(s,16);
+y=decimate(y,16);
+%y=modulatedSignal;
 
 
 uw=modulatedSignal(1,1:48);
-%uw=s;
 
 
 % Demodulation consits of three parts
 % Only for QPSK
 
 % 1. Channel Estimation
-Lw = 22;
-Ls = 10;
-k=0:7;
-for j=1:1
-    theta_uw=0;
-    phs=0;
-    yyy=0;
+Lw = 41;
+Ls = 11;
+receivedSymbols_hat=uw;
+
+for h=1:(length(y)-Lw)/Ls
+    
+    k=0:7;
+    phs=0;  %theta_uw=0;
+    y4sum=0;
     for l=1:Lw
-        phs = phs+phase(y(l)/uw(l));
-        yyy = yyy+y(l)^4;
+        phs = phs+phase(y((h-1)*Ls+l)/receivedSymbols_hat((h-1)*Ls+l));
+        y4sum = y4sum+y((h-1)*Ls+l)^4;
     end
     phs=phs/Lw;
-    theta_k = 1/4*atan2(imag(yyy),real(yyy))+k*pi/4;
-end
+    theta_k = 1/4*atan2(imag(y4sum),real(y4sum))+k*pi/4;
+   
+    % arg min of phase
+    theta_hat(h) = arg_min(phs,theta_k);
 
-diff=2*pi;
-for j=0:7
-    if theta_k(j+1)>pi
-        theta_k(j+1)=theta_k(j+1)-2*pi;
-    elseif theta_k(j+1)<-pi
-        theta_k(j+1)=theta_k(j+1)+2*pi;
+
+    % Channel Compensation
+    for j= ((Lw+1)/2+(h-1)*Ls-(Ls-1)/2):(Lw+h*Ls)
+        %if j>length(uw)
+            receivedSymbols_hat(((Lw+1)/2+(h-1)*Ls-(Ls-1)/2):(Lw+h*Ls)) = y(((Lw+1)/2+(h-1)*Ls-(Ls-1)/2):(Lw+h*Ls))*(cos(theta_hat(h))-1i*sin(theta_hat(h)));
+        %end
     end
-    abs(theta_k(j+1)-phs)
-    if diff > abs(theta_k(j+1)-phs);
-        diff=abs(theta_k(j+1)-phs);
-        theta_hat = theta_k(j+1)
-   end
+    disp('check 1');
 end
-theta_k*180/pi
-theta_hat*180/pi
-phs*180/pi
 
-compensated = y(1:Lw+1)*(cos(theta_hat)-1i*sin(theta_hat));
 
 % Hard Slicer for symbol detection
-for j=1:Lw+1
-    symbolPhase=phase(compensated(j));
+for j=1:length(receivedSymbols_hat)%length(y)
+    symbolPhase=phase(receivedSymbols_hat(j));
     if symbolPhase <= pi/4 && symbolPhase >= -pi/4
         b = [0 0];
     elseif symbolPhase <= 3*pi/4 && symbolPhase >= pi/4
@@ -190,5 +166,9 @@ for j=1:Lw+1
 end
 
 
-corrects = bits(1:2*(Lw+1))==burst(1:2*(Lw+1));
+%corrects = bits(1:50*2)==burst(1:50*2);%length(receivedSymbols_hat)*2);
+corrects = bits==burst(1:length(receivedSymbols_hat)*2);
 c=sum(corrects)
+w=length(corrects)-c
+figure;
+plot(1:length(theta_hat),theta_hat*180/pi)
