@@ -4,8 +4,8 @@
 
 
 
-
-function g_t = rician_channel(channelLength) 
+%channelLength=8753
+function g_t = ricianChannelf(channelLength) 
 
     N=70;
     M=1/2*(N/2-1);
@@ -13,12 +13,12 @@ function g_t = rician_channel(channelLength)
 
     n = 1:M;
     Ts = (0.5*10^-3)/l;
-    t0 = 0;
+    t0 = rand;
     l=1:l;
     t=(t0+l(1)*Ts):Ts:(t0+l(length(l))*Ts);
 
 
-    fd=20;      %doppler frequency
+    fd=200;      %doppler frequency
     omega_d = 2*pi*fd;
     omega_n = omega_d*cos(2*pi*n/N);
     alpha = 0;
@@ -26,15 +26,20 @@ function g_t = rician_channel(channelLength)
 
     %Jakes's Model
     for i=1:length(t)
-        gI_t(i) = sum(2*cos(beta_n).*cos((omega_n)*t(i)))+sqrt(2)*cos(omega_d*t(i))*cos(alpha);
-        gQ_t(i) = sum(2*sin(beta_n).*cos((omega_n)*t(i)))+sqrt(2)*cos(omega_d*t(i))*sin(alpha);
+        gI_t(i) = sum(2*cos(beta_n).*cos((omega_n)*t(i))) + sqrt(2)*cos(omega_d*t(i))*cos(alpha);
+        gQ_t(i) = sum(2*sin(beta_n).*cos((omega_n)*t(i))) + sqrt(2)*cos(omega_d*t(i))*sin(alpha);
     end
+Pi=sum(abs(gI_t).^2)/length(l)
+Pq=sum(abs(gQ_t).^2)/length(l)
 
-% Jakes' Model from other source
-%     for i=1:length(t)
-%         gI_t(i) = sqrt(2)*cos(2*pi*fd*t(i))*2*sum(cos(2*pi*n/M).*cos(omega_d*cos(2*pi*n/(4*M+2))*t(i)));
-%         gQ_t(i) = 2*sum(sin(2*pi*n/M).*cos(2*pi*fd*cos(2*pi*n/(4*M+2))*t(i)));
-%     end   
+%Jakes' Model from other source
+    for i=1:length(t)
+        gI_t2(i) = sqrt(2)*cos(2*pi*fd*t(i))*2*sum(cos(2*pi*n/M).*cos(omega_d*cos(2*pi*n/(4*M+2))*t(i)));
+        gQ_t2(i) = 2*sum(sin(2*pi*n/M).*cos(2*pi*fd*cos(2*pi*n/(4*M+2))*t(i)));
+    end   
+    
+Pi2=sum(abs(gI_t2).^2)/length(l)
+Pq2=sum(abs(gQ_t2).^2)/length(l)
     %Rayleigh distribution
      gI_t = gI_t/sqrt(2*(M+1));
      gQ_t = gQ_t/sqrt(2*(M));
